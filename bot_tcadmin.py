@@ -75,11 +75,18 @@ class TCAdminBot:
                 '/usr/bin/chromium-browser',
                 '/usr/bin/google-chrome',
             ]
+            chrome_binary = None
             for bin_path in binary_candidates:
                 if bin_path and os.path.exists(bin_path):
+                    chrome_binary = bin_path
                     chrome_options.binary_location = bin_path
-                    self.logger.info(f"Usando Chrome binário em: {bin_path}")
+                    self.logger.info(f"✅ Chrome encontrado em: {bin_path}")
                     break
+            
+            if not chrome_binary:
+                self.logger.warning("⚠️ Chrome/Chromium não encontrado no sistema!")
+                self.logger.warning("⚠️ Certifique-se de que o Aptfile contém: chromium-browser")
+                # Tenta continuar mesmo assim, pode funcionar em alguns ambientes
 
             # Tenta usar um chromedriver conhecido se existir
             service = None
@@ -91,17 +98,29 @@ class TCAdminBot:
             for drv in driver_candidates:
                 if drv and os.path.exists(drv):
                     service = Service(drv)
-                    self.logger.info(f"Usando ChromeDriver em: {drv}")
+                    self.logger.info(f"✅ Usando ChromeDriver do sistema em: {drv}")
                     break
 
-            if service:
-                self.driver = webdriver.Chrome(options=chrome_options, service=service)
-            else:
+            if not service:
                 # Fallback: usa webdriver-manager para baixar o driver compatível
-                self.logger.info("Baixando ChromeDriver via webdriver-manager...")
-                driver_path = ChromeDriverManager().install()
-                service = Service(driver_path)
-                self.driver = webdriver.Chrome(options=chrome_options, service=service)
+                self.logger.info("📥 Baixando ChromeDriver via webdriver-manager...")
+                try:
+                    driver_path = ChromeDriverManager().install()
+                    service = Service(driver_path)
+                    self.logger.info(f"✅ ChromeDriver baixado em: {driver_path}")
+                except Exception as e:
+                    self.logger.error(f"❌ Erro ao baixar ChromeDriver: {e}")
+                    raise
+            
+            # Verifica se o Chrome está realmente instalado antes de tentar usar
+            if chrome_binary:
+                # Testa se o binário é executável
+                import stat
+                if not os.access(chrome_binary, os.X_OK):
+                    self.logger.error(f"❌ Chrome em {chrome_binary} não é executável!")
+                    raise Exception(f"Chrome não é executável em {chrome_binary}")
+            
+            self.driver = webdriver.Chrome(options=chrome_options, service=service)
             self.wait = WebDriverWait(self.driver, 30)
             
             self.logger.info("Driver do Chrome inicializado com sucesso")
