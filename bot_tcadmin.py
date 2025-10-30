@@ -96,22 +96,34 @@ class TCAdminBot:
                         timeout=30
                     )
                     if result.returncode == 0:
-                        result = subprocess.run(
-                            ["apt-get", "install", "-y", "-qq", "chromium-browser"],
-                            capture_output=True,
-                            timeout=120
-                        )
-                        if result.returncode == 0:
+                        # Tenta vários nomes de pacote
+                        packages = ["chromium", "chromium-browser", "google-chrome-stable"]
+                        installed = False
+                        for pkg in packages:
+                            self.logger.info(f"🔧 Tentando instalar {pkg}...")
+                            result = subprocess.run(
+                                ["apt-get", "install", "-y", "-qq", pkg],
+                                capture_output=True,
+                                timeout=120
+                            )
+                            if result.returncode == 0:
+                                self.logger.info(f"✅ {pkg} instalado com sucesso!")
+                                installed = True
+                                break
+                            else:
+                                self.logger.warning(f"⚠️ {pkg} não disponível: {result.stderr.decode()[:100]}")
+                        
+                        if installed:
                             self.logger.info("✅ Chromium instalado com sucesso!")
                             # Tenta encontrar novamente
-                            for bin_path in ['/usr/bin/chromium', '/usr/bin/chromium-browser']:
+                            for bin_path in ['/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable']:
                                 if os.path.exists(bin_path):
                                     chrome_binary = bin_path
                                     chrome_options.binary_location = bin_path
                                     self.logger.info(f"✅ Chrome encontrado em: {bin_path}")
                                     break
                         else:
-                            self.logger.warning(f"⚠️ Falha ao instalar Chromium: {result.stderr.decode()[:200]}")
+                            self.logger.warning("⚠️ Nenhum pacote Chromium/Chrome disponível nos repositórios apt")
                     else:
                         self.logger.warning("⚠️ apt-get não disponível ou sem permissões")
                 except Exception as e:
