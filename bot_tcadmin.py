@@ -16,6 +16,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
 import requests
@@ -63,8 +64,45 @@ class TCAdminBot:
             chrome_options.add_argument('--disable-web-security')
             chrome_options.add_argument('--window-size=1920,1080')
             chrome_options.add_argument('--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
-            
-            self.driver = webdriver.Chrome(options=chrome_options)
+
+            # Tenta localizar binário do Chromium/Chrome via envs e locais comuns (Railway/Nixpacks)
+            try:
+                import os
+                binary_candidates = [
+                    os.getenv('CHROME_BIN'),
+                    os.getenv('GOOGLE_CHROME_BIN'),
+                    '/usr/bin/chromium',
+                    '/usr/bin/chromium-browser',
+                ]
+                for bin_path in binary_candidates:
+                    if bin_path and os.path.exists(bin_path):
+                        chrome_options.binary_location = bin_path
+                        self.logger.info(f"Usando Chrome binário em: {bin_path}")
+                        break
+            except Exception:
+                pass
+
+            # Tenta usar um chromedriver conhecido se existir
+            service = None
+            try:
+                driver_candidates = [
+                    os.getenv('CHROMEDRIVER_PATH'),
+                    '/usr/lib/chromium/chromedriver',
+                    '/usr/bin/chromedriver',
+                ]
+                for drv in driver_candidates:
+                    if drv and os.path.exists(drv):
+                        service = Service(drv)
+                        self.logger.info(f"Usando ChromeDriver em: {drv}")
+                        break
+            except Exception:
+                pass
+
+            if service:
+                self.driver = webdriver.Chrome(options=chrome_options, service=service)
+            else:
+                # Selenium Manager baixará um driver compatível
+                self.driver = webdriver.Chrome(options=chrome_options)
             self.wait = WebDriverWait(self.driver, 30)
             
             self.logger.info("Driver do Chrome inicializado com sucesso")
