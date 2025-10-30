@@ -85,8 +85,42 @@ class TCAdminBot:
             
             if not chrome_binary:
                 self.logger.warning("⚠️ Chrome/Chromium não encontrado no sistema!")
-                self.logger.warning("⚠️ Certifique-se de que o Aptfile contém: chromium-browser")
-                # Tenta continuar mesmo assim, pode funcionar em alguns ambientes
+                self.logger.info("🔧 Tentando instalar Chromium automaticamente...")
+                
+                # Tenta instalar via apt-get (se disponível e com permissões)
+                try:
+                    import subprocess
+                    result = subprocess.run(
+                        ["apt-get", "update", "-qq"],
+                        capture_output=True,
+                        timeout=30
+                    )
+                    if result.returncode == 0:
+                        result = subprocess.run(
+                            ["apt-get", "install", "-y", "-qq", "chromium-browser"],
+                            capture_output=True,
+                            timeout=120
+                        )
+                        if result.returncode == 0:
+                            self.logger.info("✅ Chromium instalado com sucesso!")
+                            # Tenta encontrar novamente
+                            for bin_path in ['/usr/bin/chromium', '/usr/bin/chromium-browser']:
+                                if os.path.exists(bin_path):
+                                    chrome_binary = bin_path
+                                    chrome_options.binary_location = bin_path
+                                    self.logger.info(f"✅ Chrome encontrado em: {bin_path}")
+                                    break
+                        else:
+                            self.logger.warning(f"⚠️ Falha ao instalar Chromium: {result.stderr.decode()[:200]}")
+                    else:
+                        self.logger.warning("⚠️ apt-get não disponível ou sem permissões")
+                except Exception as e:
+                    self.logger.warning(f"⚠️ Erro ao tentar instalar Chromium: {str(e)}")
+                
+                if not chrome_binary:
+                    self.logger.error("❌ CRÍTICO: Chromium não está instalado!")
+                    self.logger.error("❌ Configure NIXPACKS_PKGS na Railway com: chromium chromium-driver nss libXScrnSaver alsa-lib fontconfig at-spi2-atk gtk3 libdrm mesa libxshmfence")
+                    raise Exception("Chromium não encontrado. Configure NIXPACKS_PKGS na Railway ou instale manualmente.")
 
             # Tenta usar um chromedriver conhecido se existir
             service = None
