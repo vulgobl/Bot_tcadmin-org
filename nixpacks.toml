@@ -1,0 +1,6 @@
+[phases.setup]
+nixPkgs = ["chromium", "chromedriver", "nss", "libXScrnSaver", "alsa-lib", "fontconfig", "at-spi2-atk", "gtk3", "libdrm", "mesa", "libxshmfence"]
+
+[providers]
+python = "3.11"
+
