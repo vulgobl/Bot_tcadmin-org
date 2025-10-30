@@ -3,7 +3,7 @@ import subprocess
 import threading
 from datetime import datetime
 from fastapi import FastAPI, Header, HTTPException
-
+# pylint: disable=invalid-name
 app = FastAPI()
 
 is_running = False
