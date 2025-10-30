@@ -1,0 +1,24 @@
+2025-10-24 12:49:17,636 - INFO - 🚀 Bot TCAdmin Sob Demanda inicializado
+2025-10-24 12:49:17,636 - INFO - 🎯 Execução apenas quando acionado por webhook
+2025-10-24 12:49:17,637 - INFO - 🎯 === PROCESSANDO PEDIDO test-pedido-123 ===
+2025-10-24 12:49:17,637 - INFO - 🔍 Buscando pedido test-pedido-123 no Supabase...
+2025-10-24 12:49:18,806 - ERROR - ❌ Erro ao buscar pedido: 400
+2025-10-24 12:49:18,807 - ERROR - ❌ Não foi possível obter dados do pedido test-pedido-123
+2025-10-24 12:49:40,805 - INFO - 🚀 Bot TCAdmin Sob Demanda inicializado
+2025-10-24 12:49:40,805 - INFO - 🎯 Execução apenas quando acionado por webhook
+2025-10-24 12:49:40,805 - INFO - 🎯 === PROCESSANDO PEDIDO fake-order-123 ===
+2025-10-24 12:49:40,805 - INFO - 🔍 Buscando pedido fake-order-123 no Supabase...
+2025-10-24 12:49:41,079 - ERROR - ❌ Erro ao buscar pedido: 400
+2025-10-24 12:49:41,080 - ERROR - ❌ Não foi possível obter dados do pedido fake-order-123
+2025-10-24 12:49:49,024 - INFO - 🚀 Bot TCAdmin Sob Demanda inicializado
+2025-10-24 12:49:49,025 - INFO - 🎯 Execução apenas quando acionado por webhook
+2025-10-24 12:49:49,025 - INFO - 🎯 === PROCESSANDO PEDIDO fake-order-123 ===
+2025-10-24 12:49:49,025 - INFO - 🔍 Buscando pedido fake-order-123 no Supabase...
+2025-10-24 12:49:49,304 - ERROR - ❌ Erro ao buscar pedido: 400
+2025-10-24 12:49:49,306 - ERROR - ❌ Não foi possível obter dados do pedido fake-order-123
+2025-10-24 12:50:18,464 - INFO - 🚀 Bot TCAdmin Sob Demanda inicializado
+2025-10-24 12:50:18,465 - INFO - 🎯 Execução apenas quando acionado por webhook
+2025-10-24 12:50:18,465 - INFO - 🎯 === PROCESSANDO PEDIDO fake-order-123 ===
+2025-10-24 12:50:18,465 - INFO - 🔍 Buscando pedido fake-order-123 no Supabase...
+2025-10-24 12:50:18,840 - ERROR - ❌ Erro ao buscar pedido: 400
+2025-10-24 12:50:18,849 - ERROR - ❌ Não foi possível obter dados do pedido fake-order-123
