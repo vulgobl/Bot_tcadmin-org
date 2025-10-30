@@ -34,7 +34,12 @@ from typing import Dict, List, Optional
 
 # Adiciona o diretório pai ao path para importar o módulo
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from tcadmin_bot.bot_tcadmin import TCAdminBot
+try:
+    # Quando o projeto completo está em um nível acima (monorepo)
+    from tcadmin_bot.bot_tcadmin import TCAdminBot
+except ModuleNotFoundError:
+    # Quando roda standalone dentro do diretório tcadmin_bot (Railway)
+    from bot_tcadmin import TCAdminBot
 
 class AntiLagBot:
     def __init__(self):
