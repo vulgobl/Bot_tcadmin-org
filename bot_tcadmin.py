@@ -17,6 +17,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
 import requests
@@ -66,43 +67,41 @@ class TCAdminBot:
             chrome_options.add_argument('--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
 
             # Tenta localizar binário do Chromium/Chrome via envs e locais comuns (Railway/Nixpacks)
-            try:
-                import os
-                binary_candidates = [
-                    os.getenv('CHROME_BIN'),
-                    os.getenv('GOOGLE_CHROME_BIN'),
-                    '/usr/bin/chromium',
-                    '/usr/bin/chromium-browser',
-                ]
-                for bin_path in binary_candidates:
-                    if bin_path and os.path.exists(bin_path):
-                        chrome_options.binary_location = bin_path
-                        self.logger.info(f"Usando Chrome binário em: {bin_path}")
-                        break
-            except Exception:
-                pass
+            import os
+            binary_candidates = [
+                os.getenv('CHROME_BIN'),
+                os.getenv('GOOGLE_CHROME_BIN'),
+                '/usr/bin/chromium',
+                '/usr/bin/chromium-browser',
+                '/usr/bin/google-chrome',
+            ]
+            for bin_path in binary_candidates:
+                if bin_path and os.path.exists(bin_path):
+                    chrome_options.binary_location = bin_path
+                    self.logger.info(f"Usando Chrome binário em: {bin_path}")
+                    break
 
             # Tenta usar um chromedriver conhecido se existir
             service = None
-            try:
-                driver_candidates = [
-                    os.getenv('CHROMEDRIVER_PATH'),
-                    '/usr/lib/chromium/chromedriver',
-                    '/usr/bin/chromedriver',
-                ]
-                for drv in driver_candidates:
-                    if drv and os.path.exists(drv):
-                        service = Service(drv)
-                        self.logger.info(f"Usando ChromeDriver em: {drv}")
-                        break
-            except Exception:
-                pass
+            driver_candidates = [
+                os.getenv('CHROMEDRIVER_PATH'),
+                '/usr/lib/chromium/chromedriver',
+                '/usr/bin/chromedriver',
+            ]
+            for drv in driver_candidates:
+                if drv and os.path.exists(drv):
+                    service = Service(drv)
+                    self.logger.info(f"Usando ChromeDriver em: {drv}")
+                    break
 
             if service:
                 self.driver = webdriver.Chrome(options=chrome_options, service=service)
             else:
-                # Selenium Manager baixará um driver compatível
-                self.driver = webdriver.Chrome(options=chrome_options)
+                # Fallback: usa webdriver-manager para baixar o driver compatível
+                self.logger.info("Baixando ChromeDriver via webdriver-manager...")
+                driver_path = ChromeDriverManager().install()
+                service = Service(driver_path)
+                self.driver = webdriver.Chrome(options=chrome_options, service=service)
             self.wait = WebDriverWait(self.driver, 30)
             
             self.logger.info("Driver do Chrome inicializado com sucesso")
