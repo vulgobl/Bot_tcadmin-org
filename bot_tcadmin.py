@@ -23,7 +23,10 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException,
 import requests
 import json
 import os
-from resend import Resend
+try:
+    import resend
+except ImportError:
+    resend = None
 
 class TCAdminBot:
     def __init__(self, headless=False):
@@ -711,7 +714,11 @@ class TCAdminBot:
                 html_content = html_content.replace(key, str(value))
             
             # Envia email via Resend
-            resend = Resend(api_key=self.resend_api_key)
+            if resend is None:
+                self.logger.error("❌ Biblioteca Resend não está instalada corretamente")
+                return False
+                
+            resend_client = resend.Resend(api_key=self.resend_api_key)
             
             params = {
                 "from": self.from_email,
@@ -720,7 +727,7 @@ class TCAdminBot:
                 "html": html_content
             }
             
-            email = resend.emails.send(params)
+            email = resend_client.emails.send(params)
             
             self.logger.info(f"✅ Email enviado com sucesso para {user_email}")
             self.logger.info(f"📧 Email ID: {email.get('id', 'N/A')}")
