@@ -22,6 +22,8 @@ from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
 import requests
 import json
+import os
+from resend import Resend
 
 class TCAdminBot:
     def __init__(self, headless=False):
@@ -34,6 +36,11 @@ class TCAdminBot:
         # Configurações do Supabase
         self.supabase_url = "https://gxvcovuwtbpkvzqdbcbr.supabase.co"
         self.supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd4dmNvdnV3dGJwa3Z6cWRiY2JyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgyMDU0MzgsImV4cCI6MjA2Mzc4MTQzOH0.O9Z831v0AJaBvtYyGUcDMBuVNmONNqWkIhJYuVa3FpM"
+        
+        # Configurações do Resend para envio de emails
+        self.resend_api_key = os.getenv('RESEND_API_KEY', '')
+        self.from_email = os.getenv('RESEND_FROM_EMAIL', 'onboarding@resend.dev')
+        self.tcadmin_url = os.getenv('TCADMIN_URL', 'https://tcadmin.xyz/')
         
     def setup_logging(self):
         """Configura o sistema de logging"""
@@ -659,6 +666,70 @@ class TCAdminBot:
         characters = string.ascii_letters + string.digits + "!@#$%^&*"
         return ''.join(random.choice(characters) for _ in range(length))
     
+    def send_welcome_email(self, order_data, username, password):
+        """Envia email de boas-vindas com credenciais do host"""
+        try:
+            if not self.resend_api_key:
+                self.logger.warning("⚠️ RESEND_API_KEY não configurada, pulando envio de email")
+                return False
+            
+            # Busca dados do perfil para email e nome
+            profile_data = order_data.get('profile', {})
+            user_email = profile_data.get('email', '')
+            full_name = profile_data.get('full_name', 'Usuário')
+            company_name = order_data.get('server_name_preference', 'CloudBase Hosting')
+            
+            if not user_email:
+                self.logger.warning("⚠️ Email do usuário não encontrado, pulando envio")
+                return False
+            
+            # Carrega template HTML
+            template_path = os.path.join(os.path.dirname(__file__), 'email_template.html')
+            try:
+                with open(template_path, 'r', encoding='utf-8') as f:
+                    html_content = f.read()
+            except Exception as e:
+                self.logger.error(f"❌ Erro ao carregar template: {e}")
+                return False
+            
+            # Busca nome do plano (pode vir do plan_id ou order_data)
+            plan_name = order_data.get('plan_name', 'Host MTA/SAMP')
+            
+            # Substitui variáveis no template
+            replacements = {
+                '{{FULL_NAME}}': full_name,
+                '{{COMPANY_NAME}}': company_name,
+                '{{USERNAME}}': username,
+                '{{PASSWORD}}': password,
+                '{{PLAN_NAME}}': plan_name,
+                '{{TCADMIN_URL}}': self.tcadmin_url,
+                '{{TCADMIN_ALTERNATIVE_URL}}': self.tcadmin_url,
+                '{{WEBSITE_URL}}': 'https://cloudbasehosting.com.br'
+            }
+            
+            for key, value in replacements.items():
+                html_content = html_content.replace(key, str(value))
+            
+            # Envia email via Resend
+            resend = Resend(api_key=self.resend_api_key)
+            
+            params = {
+                "from": self.from_email,
+                "to": [user_email],
+                "subject": "🎉 Seu host foi criado com sucesso! - CloudBase Hosting",
+                "html": html_content
+            }
+            
+            email = resend.emails.send(params)
+            
+            self.logger.info(f"✅ Email enviado com sucesso para {user_email}")
+            self.logger.info(f"📧 Email ID: {email.get('id', 'N/A')}")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"❌ Erro ao enviar email: {str(e)}")
+            return False
+    
     def create_user_in_tcadmin(self, order_data):
         """Cria usuário no TCAdmin usando dados específicos do pedido"""
         try:
@@ -778,9 +849,19 @@ class TCAdminBot:
                         
                         if self.create_service_for_user(username, slots, order_data):
                             self.logger.info(f"🎉 Serviço criado para usuário {username}!")
+                            
+                            # Envia email de boas-vindas após sucesso
+                            self.logger.info("📧 Enviando email de boas-vindas...")
+                            self.send_welcome_email(order_data, username, password)
+                            
                             return True
                         else:
                             self.logger.warning(f"⚠️ Erro ao criar serviço para usuário {username}")
+                            
+                            # Envia email mesmo se serviço falhou (usuário foi criado)
+                            self.logger.info("📧 Enviando email de boas-vindas...")
+                            self.send_welcome_email(order_data, username, password)
+                            
                             return True  # Usuário foi criado, mesmo se serviço falhar
                     else:
                         self.logger.warning(f"⚠️ Usuário {username} pode não ter sido criado")
@@ -803,9 +884,19 @@ class TCAdminBot:
                         
                         if self.create_service_for_user(username, slots, order_data):
                             self.logger.info(f"🎉 Serviço criado para usuário {username}!")
+                            
+                            # Envia email de boas-vindas após sucesso
+                            self.logger.info("📧 Enviando email de boas-vindas...")
+                            self.send_welcome_email(order_data, username, password)
+                            
                             return True
                         else:
                             self.logger.warning(f"⚠️ Erro ao criar serviço para usuário {username}")
+                            
+                            # Envia email mesmo se serviço falhou (usuário foi criado)
+                            self.logger.info("📧 Enviando email de boas-vindas...")
+                            self.send_welcome_email(order_data, username, password)
+                            
                             return True  # Usuário foi criado, mesmo se serviço falhar
                     else:
                         self.logger.warning(f"⚠️ Usuário {username} pode não ter sido criado")
