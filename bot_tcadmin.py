@@ -528,40 +528,25 @@ class TCAdminBot:
             # 1. Clica em "User Management"
             self.logger.info("🔍 Procurando 'User Management'...")
             
-            # Tenta diferentes estratégias para encontrar o link
+            # Busca por XPath
             user_management_link = None
-            
-            # Estratégia 1: Busca por texto exato
             try:
-                user_management_link = self.driver.find_element(By.LINK_TEXT, "User Management")
-                self.logger.info("✅ Encontrado por LINK_TEXT")
+                # Tenta primeiro por XPath direto com texto
+                user_management_link = self.wait.until(
+                    EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'User Management')]"))
+                )
+                self.logger.info("✅ Encontrado por XPath: //a[contains(text(), 'User Management')]")
             except:
-                pass
-            
-            # Estratégia 2: Busca por texto parcial
-            if not user_management_link:
                 try:
-                    user_management_link = self.driver.find_element(By.PARTIAL_LINK_TEXT, "User Management")
-                    self.logger.info("✅ Encontrado por PARTIAL_LINK_TEXT")
+                    # Fallback: busca em todos os links
+                    user_management_links = self.driver.find_elements(By.XPATH, "//a")
+                    for link in user_management_links:
+                        if "user management" in link.text.lower():
+                            user_management_link = link
+                            self.logger.info("✅ Encontrado por busca em todos os links via XPath")
+                            break
                 except:
                     pass
-            
-            # Estratégia 3: Busca por XPath com texto
-            if not user_management_link:
-                try:
-                    user_management_link = self.driver.find_element(By.XPATH, "//a[contains(text(), 'User Management')]")
-                    self.logger.info("✅ Encontrado por XPath")
-                except:
-                    pass
-            
-            # Estratégia 4: Busca em todos os links
-            if not user_management_link:
-                user_management_links = self.driver.find_elements(By.XPATH, "//a")
-                for link in user_management_links:
-                    if "user management" in link.text.lower():
-                        user_management_link = link
-                        self.logger.info("✅ Encontrado por busca em todos os links")
-                        break
             
             if user_management_link:
                 user_management_link.click()
@@ -579,40 +564,25 @@ class TCAdminBot:
             # 2. Clica em "Create a User"
             self.logger.info("🔍 Procurando 'Create a User'...")
             
-            # Tenta diferentes estratégias para encontrar o link
+            # Busca por XPath
             create_user_link = None
-            
-            # Estratégia 1: Busca por texto exato
             try:
-                create_user_link = self.driver.find_element(By.LINK_TEXT, "Create a User")
-                self.logger.info("✅ Encontrado por LINK_TEXT")
+                # Tenta primeiro por XPath direto com texto
+                create_user_link = self.wait.until(
+                    EC.element_to_be_clickable((By.XPATH, "//a[contains(text(), 'Create a User')]"))
+                )
+                self.logger.info("✅ Encontrado por XPath: //a[contains(text(), 'Create a User')]")
             except:
-                pass
-            
-            # Estratégia 2: Busca por texto parcial
-            if not create_user_link:
                 try:
-                    create_user_link = self.driver.find_element(By.PARTIAL_LINK_TEXT, "Create a User")
-                    self.logger.info("✅ Encontrado por PARTIAL_LINK_TEXT")
+                    # Fallback: busca em todos os links
+                    create_user_links = self.driver.find_elements(By.XPATH, "//a")
+                    for link in create_user_links:
+                        if "create a user" in link.text.lower():
+                            create_user_link = link
+                            self.logger.info("✅ Encontrado por busca em todos os links via XPath")
+                            break
                 except:
                     pass
-            
-            # Estratégia 3: Busca por XPath com texto
-            if not create_user_link:
-                try:
-                    create_user_link = self.driver.find_element(By.XPATH, "//a[contains(text(), 'Create a User')]")
-                    self.logger.info("✅ Encontrado por XPath")
-                except:
-                    pass
-            
-            # Estratégia 4: Busca em todos os links
-            if not create_user_link:
-                create_user_links = self.driver.find_elements(By.XPATH, "//a")
-                for link in create_user_links:
-                    if "create a user" in link.text.lower():
-                        create_user_link = link
-                        self.logger.info("✅ Encontrado por busca em todos os links")
-                        break
             
             if create_user_link:
                 create_user_link.click()
@@ -797,28 +767,6 @@ class TCAdminBot:
                 profile_button.click()
                 self.logger.info("✅ Clicado em 'Perfil'")
                 time.sleep(3)
-                
-                # Usa dados do perfil que já estão no order_data (já buscados corretamente)
-                profile_data = order_data.get('profile', {})
-                self.logger.info(f"📊 Usando dados do perfil do order_data: {profile_data}")
-                
-                # Preenche celular (campo celular, não telefone residencial)
-                try:
-                    phone_field = self.driver.find_element(By.XPATH, "//*[@id='ContentPlaceHolderMain_UserDetails1_TextBoxMobilePhoneTextBox']")
-                    phone_field.clear()
-                    phone_field.send_keys(profile_data.get('phone', ''))
-                    self.logger.info(f"✅ Celular preenchido: {profile_data.get('phone', '')}")
-                except Exception as e:
-                    self.logger.warning(f"⚠️ Erro ao preencher celular: {str(e)}")
-                
-                # Preenche email primário
-                try:
-                    email_field = self.driver.find_element(By.XPATH, "//*[@id='ContentPlaceHolderMain_UserDetails1_TextBoxPrimaryEmailTextBox']")
-                    email_field.clear()
-                    email_field.send_keys(profile_data.get('email', ''))
-                    self.logger.info(f"✅ Email primário preenchido: {profile_data.get('email', '')}")
-                except Exception as e:
-                    self.logger.warning(f"⚠️ Erro ao preencher email primário: {str(e)}")
                 
                 # Configura fuso horário para Brasília
                 try:
