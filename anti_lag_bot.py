@@ -396,11 +396,17 @@ class AntiLagBot:
                     raise Exception("Falha no login do TCAdmin")
             
             # ===========================================
-            # BUSCA DADOS DO USUÁRIO
+            # BUSCA DADOS DO USUÁRIO E PLANO
             # ===========================================
             # Busca perfil do usuário no Supabase
             user_profile = self.get_user_profile(order_data['user_id'])
             order_data['profile'] = user_profile
+            
+            # Busca nome do plano para o email
+            plan_id = order_data.get('plan_id')
+            plan_name = self.get_plan_name(plan_id) if plan_id else 'Host MTA/SAMP'
+            order_data['plan_name'] = plan_name
+            self.logger.info(f"📋 Plano do pedido: {plan_name}")
             
             # ===========================================
             # PROCESSAMENTO DO PEDIDO
