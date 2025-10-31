@@ -60,9 +60,14 @@ def test_send_email():
     
     # Substitui variáveis
     replacements = {
-        '{{userName}}': test_data['username'],
-        '{{userPassword}}': test_data['password'],
-        '{{alternativeLink}}': TCADMIN_URL
+        '{{FULL_NAME}}': test_data['full_name'],
+        '{{COMPANY_NAME}}': test_data['server_name'],
+        '{{USERNAME}}': test_data['username'],
+        '{{PASSWORD}}': test_data['password'],
+        '{{PLAN_NAME}}': test_data['plan_name'],
+        '{{TCADMIN_URL}}': TCADMIN_URL,
+        '{{TCADMIN_ALTERNATIVE_URL}}': TCADMIN_URL,
+        '{{WEBSITE_URL}}': 'https://cloudbasehosting.store'
     }
     
     for key, value in replacements.items():
