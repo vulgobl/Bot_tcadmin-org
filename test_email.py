@@ -80,28 +80,7 @@ def test_send_email():
     try:
         print("📧 Enviando email de teste...")
         
-        # Tenta diferentes formas de usar o Resend
-        try:
-            # Método 1: resend.Resend()
-            if hasattr(resend, 'Resend'):
-                resend_client = resend.Resend(api_key=RESEND_API_KEY)
-                print("✅ Método 1: resend.Resend() funcionou")
-            else:
-                # Método 2: resend.Client()
-                if hasattr(resend, 'Client'):
-                    resend_client = resend.Client(api_key=RESEND_API_KEY)
-                    print("✅ Método 2: resend.Client() funcionou")
-                else:
-                    # Método 3: Usar diretamente
-                    resend.api_key = RESEND_API_KEY
-                    resend_client = resend
-                    print("✅ Método 3: Usando resend diretamente")
-        except Exception as e:
-            print(f"⚠️ Erro ao inicializar Resend: {e}")
-            print("🔄 Tentando método alternativo...")
-            resend_client = resend
-        
-        # Tenta enviar
+        # Prepara parâmetros
         params = {
             "from": RESEND_FROM_EMAIL,
             "to": [test_data['email']],
@@ -111,33 +90,72 @@ def test_send_email():
         
         print(f"📤 Enviando para: {test_data['email']}")
         
-        # Tenta diferentes formas de enviar
+        # Tenta diferentes formas de usar o Resend
         email_response = None
-        try:
-            if hasattr(resend_client, 'emails') and hasattr(resend_client.emails, 'send'):
-                email_response = resend_client.emails.send(params)
-            elif hasattr(resend_client, 'send'):
-                email_response = resend_client.send(params)
-            elif hasattr(resend, 'send'):
-                email_response = resend.send(params)
-            else:
-                print("❌ Não encontrei método de envio no resend")
-                print(f"   Atributos disponíveis: {dir(resend_client)}")
-                return False
-        except Exception as e:
-            print(f"❌ Erro ao enviar: {e}")
-            print(f"   Tipo de erro: {type(e).__name__}")
-            import traceback
-            traceback.print_exc()
-            return False
         
+        # Método 1: resend.Emails diretamente com api_key
+        try:
+            if hasattr(resend, 'Emails'):
+                emails_api = resend.Emails(api_key=RESEND_API_KEY)
+                email_response = emails_api.send(params)
+                print("✅ Método 1: resend.Emails() funcionou")
+            else:
+                raise AttributeError("Emails não encontrado")
+        except Exception as e1:
+            print(f"⚠️ Método 1 falhou: {e1}")
+            
+            # Método 2: resend.emails.send com api_key configurada
+            try:
+                resend.api_key = RESEND_API_KEY
+                if hasattr(resend, 'emails') and hasattr(resend.emails, 'send'):
+                    email_response = resend.emails.send(params)
+                    print("✅ Método 2: resend.emails.send() funcionou")
+                else:
+                    raise AttributeError("emails.send não encontrado")
+            except Exception as e2:
+                print(f"⚠️ Método 2 falhou: {e2}")
+                
+                # Método 3: Usar Requests diretamente (fallback)
+                try:
+                    import requests
+                    headers = {
+                        "Authorization": f"Bearer {RESEND_API_KEY}",
+                        "Content-Type": "application/json"
+                    }
+                    response = requests.post(
+                        "https://api.resend.com/emails",
+                        headers=headers,
+                        json=params,
+                        timeout=30
+                    )
+                    if response.status_code == 200:
+                        email_response = response.json()
+                        print("✅ Método 3: API direta funcionou")
+                    else:
+                        raise Exception(f"API retornou {response.status_code}: {response.text}")
+                except Exception as e3:
+                    print(f"❌ Método 3 falhou: {e3}")
+                    print(f"❌ Todos os métodos falharam")
+                    import traceback
+                    traceback.print_exc()
+                    return False
+        
+        if email_response is None:
+            print("❌ Nenhum método funcionou")
+            return False
+    
         print(f"✅ Email enviado com sucesso!")
         print(f"📧 Response: {email_response}")
         
+        # Extrai ID do email da resposta
+        email_id = 'N/A'
         if isinstance(email_response, dict):
-            email_id = email_response.get('id', email_response.get('data', {}).get('id', 'N/A'))
-            print(f"📧 Email ID: {email_id}")
+            email_id = email_response.get('id') or email_response.get('data', {}).get('id', 'N/A')
+        elif hasattr(email_response, 'id'):
+            email_id = email_response.id
         
+        print(f"📧 Email ID: {email_id}")
+    
         return True
         
     except Exception as e:

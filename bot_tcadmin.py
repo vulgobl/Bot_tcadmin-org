@@ -690,30 +690,7 @@ class TCAdminBot:
             for key, value in replacements.items():
                 html_content = html_content.replace(key, str(value))
             
-            # Envia email via Resend
-            if resend is None:
-                self.logger.error("❌ Biblioteca Resend não está instalada corretamente")
-                return False
-            
-            # Tenta diferentes formas de inicializar o Resend
-            try:
-                # Método 1: resend.Resend() (mais comum)
-                if hasattr(resend, 'Resend'):
-                    resend_client = resend.Resend(api_key=self.resend_api_key)
-                    self.logger.info("✅ Resend inicializado com resend.Resend()")
-                # Método 2: resend.Client()
-                elif hasattr(resend, 'Client'):
-                    resend_client = resend.Client(api_key=self.resend_api_key)
-                    self.logger.info("✅ Resend inicializado com resend.Client()")
-                # Método 3: Configurar diretamente
-                else:
-                    resend.api_key = self.resend_api_key
-                    resend_client = resend
-                    self.logger.info("✅ Resend configurado diretamente")
-            except Exception as e:
-                self.logger.error(f"❌ Erro ao inicializar Resend: {e}")
-                return False
-            
+            # Envia email via Resend usando API direta (método que funcionou no teste)
             params = {
                 "from": self.from_email,
                 "to": [user_email],
@@ -721,26 +698,36 @@ class TCAdminBot:
                 "html": html_content
             }
             
-            # Tenta diferentes formas de enviar
             try:
-                if hasattr(resend_client, 'emails') and hasattr(resend_client.emails, 'send'):
-                    email = resend_client.emails.send(params)
-                elif hasattr(resend_client, 'send'):
-                    email = resend_client.send(params)
-                elif hasattr(resend, 'send'):
-                    email = resend.send(params)
+                # Usa API direta do Resend via requests (método testado e funcional)
+                import requests
+                headers = {
+                    "Authorization": f"Bearer {self.resend_api_key}",
+                    "Content-Type": "application/json"
+                }
+                
+                response = requests.post(
+                    "https://api.resend.com/emails",
+                    headers=headers,
+                    json=params,
+                    timeout=30
+                )
+                
+                if response.status_code == 200:
+                    email_data = response.json()
+                    email_id = email_data.get('id', 'N/A')
+                    self.logger.info(f"✅ Email enviado com sucesso para {user_email}")
+                    self.logger.info(f"📧 Email ID: {email_id}")
+                    return True
                 else:
-                    self.logger.error(f"❌ Método de envio não encontrado. Atributos: {dir(resend_client)}")
+                    self.logger.error(f"❌ API Resend retornou erro {response.status_code}: {response.text}")
                     return False
+                    
             except Exception as e:
                 self.logger.error(f"❌ Erro ao enviar email: {e}")
                 import traceback
                 self.logger.error(f"❌ Traceback: {traceback.format_exc()}")
                 return False
-            
-            self.logger.info(f"✅ Email enviado com sucesso para {user_email}")
-            self.logger.info(f"📧 Email ID: {email.get('id', 'N/A')}")
-            return True
             
         except Exception as e:
             self.logger.error(f"❌ Erro ao enviar email: {str(e)}")
