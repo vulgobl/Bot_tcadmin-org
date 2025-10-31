@@ -677,14 +677,9 @@ class TCAdminBot:
             
             # Substitui variáveis no template
             replacements = {
-                '{{FULL_NAME}}': full_name,
-                '{{COMPANY_NAME}}': company_name,
-                '{{USERNAME}}': username,
-                '{{PASSWORD}}': password,
-                '{{PLAN_NAME}}': plan_name,
-                '{{TCADMIN_URL}}': self.tcadmin_url,
-                '{{TCADMIN_ALTERNATIVE_URL}}': self.tcadmin_url,
-                '{{WEBSITE_URL}}': 'https://cloudbasehosting.com.br'
+                '{{userName}}': username,
+                '{{userPassword}}': password,
+                '{{alternativeLink}}': self.tcadmin_url
             }
             
             for key, value in replacements.items():
