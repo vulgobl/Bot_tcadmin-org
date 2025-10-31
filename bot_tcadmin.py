@@ -1444,7 +1444,7 @@ class TCAdminBot:
                             
                             # 13. Aguardar um pouco para o serviço ser processado
                             self.logger.info("⏳ Aguardando processamento do serviço...")
-                            time.sleep(5)  # Aguarda apenas 5 segundos para processar
+                            time.sleep(30)  # Aguarda 30 segundos para processar
                             self.logger.info("✅ Serviço processado!")
                         
                         except Exception as e:
