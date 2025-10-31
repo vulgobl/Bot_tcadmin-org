@@ -151,7 +151,40 @@ class TCAdminBot:
                 # Fallback: usa webdriver-manager para baixar o driver compatível
                 self.logger.info("📥 Baixando ChromeDriver via webdriver-manager...")
                 try:
-                    driver_path = ChromeDriverManager().install()
+                    # Tenta detectar a versão do Chromium/Chrome para baixar o driver correto
+                    chrome_version = None
+                    if chrome_binary:
+                        try:
+                            import subprocess
+                            result = subprocess.run(
+                                [chrome_binary, "--version"],
+                                capture_output=True,
+                                text=True,
+                                timeout=10
+                            )
+                            if result.returncode == 0:
+                                # Extrai versão do output (ex: "Chromium 142.0.7444.59")
+                                version_output = result.stdout.strip()
+                                import re
+                                match = re.search(r'(\d+)\.(\d+)\.(\d+)', version_output)
+                                if match:
+                                    chrome_version = match.group(0)
+                                    self.logger.info(f"🔍 Versão do Chrome detectada: {chrome_version}")
+                        except Exception as e:
+                            self.logger.warning(f"⚠️ Não foi possível detectar versão do Chrome: {e}")
+                    
+                    # Usa ChromeDriverManager com a versão detectada ou tenta detectar automaticamente
+                    if chrome_version:
+                        # Extrai major version (ex: "142" de "142.0.7444.59")
+                        major_version = chrome_version.split('.')[0]
+                        self.logger.info(f"📥 Baixando ChromeDriver versão {major_version} para Chrome {chrome_version}")
+                        # ChromeDriverManager precisa do driver_version como string
+                        driver_path = ChromeDriverManager(driver_version=major_version).install()
+                    else:
+                        # Tenta detectar automaticamente
+                        self.logger.info("📥 Baixando ChromeDriver (versão automática)...")
+                        driver_path = ChromeDriverManager().install()
+                    
                     service = Service(driver_path)
                     self.logger.info(f"✅ ChromeDriver baixado em: {driver_path}")
                 except Exception as e:
