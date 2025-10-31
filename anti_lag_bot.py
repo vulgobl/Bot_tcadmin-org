@@ -29,6 +29,9 @@ import os
 import sys
 import requests
 import json
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 
@@ -382,6 +385,17 @@ class AntiLagBot:
                 else:
                     self.logger.warning("⚠️ Falha ao criar assinatura, mas pedido foi processado")
                 
+                # ===========================================
+                # ENVIO DE EMAIL PARA O CLIENTE
+                # ===========================================
+                self.logger.info("📧 Enviando email de confirmação para o cliente...")
+                email_sent = self.send_confirmation_email(order_data, user_profile)
+                
+                if email_sent:
+                    self.logger.info("✅ Email enviado com sucesso!")
+                else:
+                    self.logger.warning("⚠️ Falha ao enviar email, mas pedido foi processado")
+                
                 # Fecha o navegador após processamento bem-sucedido
                 try:
                     if self.bot_instance and self.bot_instance.driver:
@@ -480,6 +494,91 @@ class AntiLagBot:
                 # Erro inesperado - pausa por 5 minutos
                 self.logger.error(f"❌ Erro no loop principal: {str(e)}")
                 time.sleep(300)  # 5 minutos de pausa em caso de erro
+    
+    def create_subscription(self, order_data: Dict) -> bool:
+        """Cria assinatura automática (implementar conforme necessário)"""
+        # TODO: Implementar criação de assinatura
+        return True
+    
+    def send_confirmation_email(self, order_data: Dict, user_profile: Optional[Dict]) -> bool:
+        """Envia email de confirmação para o cliente após criação bem-sucedida"""
+        try:
+            # Configurações do Gmail (carregadas do variables.env)
+            gmail_user = os.getenv('GMAIL_USER', '')
+            gmail_password = os.getenv('GMAIL_PASSWORD', '')
+            
+            if not gmail_user or not gmail_password:
+                self.logger.warning("⚠️ Credenciais do Gmail não configuradas")
+                return False
+            
+            # Email do cliente
+            client_email = None
+            if user_profile:
+                client_email = user_profile.get('email', '')
+            
+            if not client_email:
+                self.logger.warning("⚠️ Email do cliente não encontrado no perfil")
+                return False
+            
+            # Dados do pedido
+            server_name = order_data.get('server_name_preference', 'Seu Servidor')
+            order_id = order_data.get('id', '')
+            
+            # Prepara email
+            msg = MIMEMultipart()
+            msg['From'] = gmail_user
+            msg['To'] = client_email
+            msg['Subject'] = f"✅ Seu servidor {server_name} está pronto!"
+            
+            # Corpo do email (HTML)
+            body_html = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #4CAF50;">🎉 Seu servidor está pronto!</h2>
+                    
+                    <p>Olá,</p>
+                    
+                    <p>É com prazer que informamos que seu servidor <strong>{server_name}</strong> foi configurado e está pronto para uso!</p>
+                    
+                    <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                        <p><strong>Detalhes do pedido:</strong></p>
+                        <ul>
+                            <li><strong>Nome do servidor:</strong> {server_name}</li>
+                            <li><strong>ID do pedido:</strong> {order_id}</li>
+                            <li><strong>Status:</strong> ✅ Ativo</li>
+                        </ul>
+                    </div>
+                    
+                    <p>Você já pode acessar seu servidor através do painel de controle do TCAdmin.</p>
+                    
+                    <p>Se tiver alguma dúvida ou precisar de ajuda, estamos à disposição!</p>
+                    
+                    <p style="margin-top: 30px;">
+                        Atenciosamente,<br>
+                        <strong>Equipe CloudBase Hosting</strong>
+                    </p>
+                </div>
+            </body>
+            </html>
+            """
+            
+            msg.attach(MIMEText(body_html, 'html'))
+            
+            # Envia email
+            server = smtplib.SMTP('smtp.gmail.com', 587)
+            server.starttls()
+            server.login(gmail_user, gmail_password)
+            text = msg.as_string()
+            server.sendmail(gmail_user, client_email, text)
+            server.quit()
+            
+            self.logger.info(f"✅ Email enviado para {client_email}")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"❌ Erro ao enviar email: {str(e)}")
+            return False
     
     def log_status(self):
         """Log de status do sistema"""
