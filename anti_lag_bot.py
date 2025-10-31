@@ -416,13 +416,9 @@ class AntiLagBot:
                 # ===========================================
                 # CRIAÇÃO DE ASSINATURA AUTOMÁTICA
                 # ===========================================
-                self.logger.info("💳 Criando assinatura automática...")
-                subscription_created = self.create_subscription(order_data)
-                
-                if subscription_created:
-                    self.logger.info("✅ Assinatura criada com sucesso!")
-                else:
-                    self.logger.warning("⚠️ Falha ao criar assinatura, mas pedido foi processado")
+                # TODO: Implementar criação de assinatura se necessário
+                # self.logger.info("💳 Criando assinatura automática...")
+                # subscription_created = self.create_subscription(order_data)
                 
                 # Fecha o navegador após processamento bem-sucedido
                 try:
