@@ -276,6 +276,44 @@ class AntiLagBot:
             self.logger.error(f"❌ Erro ao buscar email do auth.users: {str(e)}")
             return None
     
+    def get_plan_name(self, plan_id: str) -> str:
+        """Busca nome do plano no Supabase"""
+        try:
+            if not plan_id:
+                self.logger.warning("⚠️ plan_id não fornecido, usando nome padrão")
+                return 'Host MTA/SAMP'
+            
+            self.logger.info(f"📋 Buscando nome do plano {plan_id}...")
+            
+            url = f"{self.supabase_url}/rest/v1/plans"
+            headers = {
+                'apikey': self.supabase_key,
+                'Authorization': f'Bearer {self.supabase_key}',
+                'Content-Type': 'application/json'
+            }
+            
+            params = {
+                'id': f'eq.{plan_id}',
+                'select': 'name'
+            }
+            
+            response = requests.get(url, headers=headers, params=params, timeout=30)
+            
+            if response.status_code == 200:
+                plans = response.json()
+                if plans and len(plans) > 0:
+                    plan = plans[0]
+                    plan_name = plan.get('name', 'Host MTA/SAMP')
+                    self.logger.info(f"✅ Nome do plano encontrado: {plan_name}")
+                    return plan_name
+            
+            self.logger.warning(f"⚠️ Plano {plan_id} não encontrado, usando nome padrão")
+            return 'Host MTA/SAMP'
+            
+        except Exception as e:
+            self.logger.error(f"❌ Erro ao buscar nome do plano: {str(e)}")
+            return 'Host MTA/SAMP'
+    
     def update_order_status(self, order_id: str, status: str) -> bool:
         """Atualiza status do pedido no Supabase"""
         try:
