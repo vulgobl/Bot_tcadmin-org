@@ -225,13 +225,51 @@ class AntiLagBot:
                     return profile
                 else:
                     self.logger.warning(f"⚠️ Perfil não encontrado para usuário {user_id}")
-                    return None
+                    # Tenta buscar email direto do auth.users como fallback
+                    return self.get_user_email_fallback(user_id)
             else:
                 self.logger.error(f"❌ Erro ao buscar perfil: {response.status_code}")
-                return None
+                self.logger.error(f"❌ Response: {response.text[:200]}")
+                # Tenta buscar email direto do auth.users como fallback
+                return self.get_user_email_fallback(user_id)
                 
         except Exception as e:
             self.logger.error(f"❌ Erro ao buscar perfil: {str(e)}")
+            # Tenta buscar email direto do auth.users como fallback
+            return self.get_user_email_fallback(user_id)
+    
+    def get_user_email_fallback(self, user_id: str) -> Optional[Dict]:
+        """Busca email direto do auth.users como fallback"""
+        try:
+            self.logger.info(f"🔄 Tentando buscar email do auth.users para {user_id}...")
+            
+            url = f"{self.supabase_url}/rest/v1/auth/users"
+            headers = {
+                'apikey': self.supabase_key,
+                'Authorization': f'Bearer {self.supabase_key}',
+                'Content-Type': 'application/json'
+            }
+            
+            params = {
+                'id': f'eq.{user_id}',
+                'select': 'email'
+            }
+            
+            response = requests.get(url, headers=headers, params=params, timeout=30)
+            
+            if response.status_code == 200:
+                users = response.json()
+                if users and len(users) > 0:
+                    email = users[0].get('email', '')
+                    if email:
+                        self.logger.info(f"✅ Email encontrado no auth.users: {email}")
+                        return {'email': email, 'full_name': 'Cliente', 'phone': ''}
+            
+            self.logger.warning("⚠️ Email não encontrado no auth.users também")
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"❌ Erro ao buscar email do auth.users: {str(e)}")
             return None
     
     def update_order_status(self, order_id: str, status: str) -> bool:
