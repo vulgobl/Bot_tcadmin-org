@@ -642,15 +642,22 @@ class TCAdminBot:
     def send_welcome_email(self, order_data, username, password):
         """Envia email de boas-vindas com credenciais do host"""
         try:
+            self.logger.info("📧 === INICIANDO ENVIO DE EMAIL ===")
+            self.logger.info(f"📧 RESEND_API_KEY configurada: {'Sim' if self.resend_api_key else 'Não'}")
+            
             if not self.resend_api_key:
                 self.logger.warning("⚠️ RESEND_API_KEY não configurada, pulando envio de email")
                 return False
             
             # Busca dados do perfil para email e nome
             profile_data = order_data.get('profile', {})
-            user_email = profile_data.get('email', '')
-            full_name = profile_data.get('full_name', 'Usuário')
+            self.logger.info(f"📧 Profile data: {profile_data}")
+            user_email = profile_data.get('email', '') if profile_data else ''
+            full_name = profile_data.get('full_name', 'Usuário') if profile_data else 'Usuário'
             company_name = order_data.get('server_name_preference', 'CloudBase Hosting')
+            
+            self.logger.info(f"📧 Email encontrado: {user_email}")
+            self.logger.info(f"📧 Nome completo: {full_name}")
             
             if not user_email:
                 self.logger.warning("⚠️ Email do usuário não encontrado, pulando envio")
@@ -1437,12 +1444,8 @@ class TCAdminBot:
                             
                             # 13. Aguardar um pouco para o serviço ser processado
                             self.logger.info("⏳ Aguardando processamento do serviço...")
-                            time.sleep(3)
-                            
-                            # ⏰ AGUARDAR 5 MINUTOS APÓS CRIAR O SERVIÇO
-                            self.logger.info("⏰ Aguardando 5 minutos após criação do serviço...")
-                            time.sleep(300)  # 300 segundos = 5 minutos
-                            self.logger.info("✅ 5 minutos de espera concluído!")
+                            time.sleep(5)  # Aguarda apenas 5 segundos para processar
+                            self.logger.info("✅ Serviço processado!")
                         
                         except Exception as e:
                             self.logger.warning(f"⚠️ Erro ao configurar slots: {str(e)}")
