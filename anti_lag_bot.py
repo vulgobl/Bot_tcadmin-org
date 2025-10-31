@@ -211,7 +211,7 @@ class AntiLagBot:
             }
             
             params = {
-                'user_id': f'eq.{user_id}',
+                'id': f'eq.{user_id}',
                 'select': 'phone,email,full_name'
             }
             
@@ -250,22 +250,26 @@ class AntiLagBot:
                 'Content-Type': 'application/json'
             }
             
+            # Tenta buscar via auth.admin API ou direto da tabela profiles com id
+            # Como auth.users não é acessível via REST diretamente, tenta novamente profiles com id
+            url = f"{self.supabase_url}/rest/v1/profiles"
             params = {
                 'id': f'eq.{user_id}',
-                'select': 'email'
+                'select': 'email,full_name,phone'
             }
             
             response = requests.get(url, headers=headers, params=params, timeout=30)
             
             if response.status_code == 200:
-                users = response.json()
-                if users and len(users) > 0:
-                    email = users[0].get('email', '')
+                profiles = response.json()
+                if profiles and len(profiles) > 0:
+                    profile = profiles[0]
+                    email = profile.get('email', '')
                     if email:
-                        self.logger.info(f"✅ Email encontrado no auth.users: {email}")
-                        return {'email': email, 'full_name': 'Cliente', 'phone': ''}
+                        self.logger.info(f"✅ Email encontrado no profiles via id: {email}")
+                        return {'email': email, 'full_name': profile.get('full_name', 'Cliente'), 'phone': profile.get('phone', '')}
             
-            self.logger.warning("⚠️ Email não encontrado no auth.users também")
+            self.logger.warning("⚠️ Email não encontrado no profiles via id")
             return None
             
         except Exception as e:
