@@ -559,9 +559,9 @@ class AntiLagBot:
                 self.logger.info("🛑 Sistema interrompido pelo usuário")
                 break
             except Exception as e:
-                # Erro inesperado - pausa por 5 minutos
+                # Erro inesperado - pausa por 4 minutos
                 self.logger.error(f"❌ Erro no loop principal: {str(e)}")
-                time.sleep(300)  # 5 minutos de pausa em caso de erro
+                time.sleep(240)  # 4 minutos de pausa em caso de erro
     
     def log_status(self):
         """Log de status do sistema"""
