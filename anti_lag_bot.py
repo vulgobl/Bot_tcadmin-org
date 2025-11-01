@@ -464,16 +464,8 @@ class AntiLagBot:
                 # self.logger.info("💳 Criando assinatura automática...")
                 # subscription_created = self.create_subscription(order_data)
                 
-                # Fecha o navegador após processamento bem-sucedido
-                try:
-                    if self.bot_instance and self.bot_instance.driver:
-                        self.logger.info("🔄 Fechando navegador após processamento...")
-                        self.bot_instance.close_browser()
-                        self.bot_instance = None  # Limpa a instância
-                        self.logger.info("✅ Navegador fechado com sucesso")
-                except Exception as e:
-                    self.logger.warning(f"⚠️ Erro ao fechar navegador: {str(e)}")
-                
+                # NOTA: O navegador será fechado no loop principal após processar
+                # Isso garante que tudo é fechado antes de processar próximo pedido
                 return True
             else:
                 # Marca pedido como falhou no Supabase
@@ -485,6 +477,16 @@ class AntiLagBot:
             self.logger.error(f"❌ Erro ao processar pedido {order_id}: {str(e)}")
             # Marca pedido como falhou em caso de erro
             self.update_order_status(order_id, 'failed')
+            
+            # Garantir fechamento do navegador mesmo em erro
+            try:
+                if self.bot_instance and self.bot_instance.driver:
+                    self.logger.info("🔄 Fechando navegador após erro...")
+                    self.bot_instance.close_browser()
+                    self.bot_instance = None
+            except:
+                pass
+                
             return False
     
     def run_anti_lag_system(self):
@@ -525,16 +527,51 @@ class AntiLagBot:
                 # ===========================================
                 # 4. PROCESSAMENTO DE PEDIDOS
                 # ===========================================
-                # Se encontrou pedidos, processa cada um
+                # Processa apenas o PRIMEIRO pedido encontrado
+                # Após processar, fecha tudo e sai (próximo será processado via fila)
                 if orders:
-                    self.logger.info(f"🎯 {len(orders)} pedido(s) encontrado(s)!")
+                    # Pega apenas o primeiro pedido (mais antigo)
+                    first_order = orders[0]
+                    self.logger.info(f"🎯 {len(orders)} pedido(s) encontrado(s)! Processando apenas o primeiro: {first_order.get('id', 'unknown')}")
                     
-                    for order in orders:
+                    try:
+                        # Processa APENAS este pedido
+                        success = self.process_single_order(first_order)
+                        
+                        if success:
+                            self.logger.info("✅ Pedido processado com sucesso!")
+                        else:
+                            self.logger.error("❌ Falha ao processar pedido")
+                        
+                        # GARANTIR que navegador foi fechado após processamento
                         try:
-                            # Processa cada pedido automaticamente
-                            self.process_single_order(order)
+                            if self.bot_instance and self.bot_instance.driver:
+                                self.logger.info("🔄 Fechando navegador após processamento do pedido...")
+                                self.bot_instance.close_browser()
+                                self.bot_instance = None
+                                self.logger.info("✅ Navegador fechado completamente")
                         except Exception as e:
-                            self.logger.error(f"❌ Erro ao processar pedido {order.get('id', 'unknown')}: {str(e)}")
+                            self.logger.warning(f"⚠️ Erro ao fechar navegador: {str(e)}")
+                        
+                        # SAIR do loop após processar um pedido
+                        # O próximo pedido será processado quando o webhook chamar novamente
+                        self.logger.info("✅ Processamento concluído. Saindo para processar próximo pedido via fila.")
+                        break
+                        
+                    except Exception as e:
+                        self.logger.error(f"❌ Erro ao processar pedido {first_order.get('id', 'unknown')}: {str(e)}")
+                        
+                        # Fechar navegador mesmo em caso de erro
+                        try:
+                            if self.bot_instance and self.bot_instance.driver:
+                                self.logger.info("🔄 Fechando navegador após erro...")
+                                self.bot_instance.close_browser()
+                                self.bot_instance = None
+                        except:
+                            pass
+                        
+                        # Sair mesmo em caso de erro
+                        break
                 
                 # ===========================================
                 # 5. CALCULA PRÓXIMO INTERVALO
