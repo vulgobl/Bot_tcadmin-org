@@ -501,31 +501,6 @@ class AntiLagBot:
         
         # Não usa loop infinito - processa 1 pedido e termina
         try:
-            try:
-                # ===========================================
-                # 1. VERIFICAÇÃO DE PROTEÇÃO CONTRA SOBRECARGA
-                # ===========================================
-                # Verifica se pode fazer requisição (limite: 100/hora)
-                if not self.can_make_request():
-                    self.state = "overload"
-                    self.logger.warning("⚠️ Limite de requisições atingido! Pausando por 1 hora...")
-                    time.sleep(3600)  # 1 hora de pausa
-                    continue
-                
-                # ===========================================
-                # 2. BUSCA PEDIDOS PAGOS NO SUPABASE
-                # ===========================================
-                # Busca pedidos com status 'paid' automaticamente
-                orders = self.get_paid_orders_from_supabase()
-                self.record_request()  # Registra requisição feita
-                
-                # ===========================================
-                # 3. ATUALIZA ESTADO DO SISTEMA
-                # ===========================================
-                # Atualiza estado baseado na presença de pedidos
-                has_orders = len(orders) > 0
-                self.update_state(has_orders)
-                
             # ===========================================
             # 1. VERIFICAÇÃO DE PROTEÇÃO CONTRA SOBRECARGA
             # ===========================================
