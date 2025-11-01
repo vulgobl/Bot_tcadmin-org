@@ -492,38 +492,40 @@ class AntiLagBot:
     def run_anti_lag_system(self):
         """
         Executa o sistema anti-lag principal
-        IMPORTANTE: Processa apenas o pedido recebido via webhook e termina completamente
-        NÃO busca pedidos diretamente no Supabase - só processa via webhook
+        IMPORTANTE: Processa APENAS o pedido recebido via webhook (ORDER_DATA)
+        NÃO busca pedidos no Supabase automaticamente
         """
         self.logger.info("🚀 Iniciando Sistema Anti-Lag TCAdmin")
         self.logger.info("📌 MODO: Processa pedido via webhook e termina completamente")
         
-        # Não usa loop infinito - processa pedido do webhook e termina
+        # Não usa loop infinito - processa 1 pedido do webhook e termina
         try:
             # ===========================================
-            # 1. VERIFICAR SE HÁ PEDIDO VIA WEBHOOK
+            # 1. VERIFICAR SE HÁ PEDIDO VIA WEBHOOK (ORDER_DATA)
             # ===========================================
-            # Busca ORDER_ID e ORDER_DATA passados pelo webhook via variáveis de ambiente
-            order_id = os.getenv('ORDER_ID', '')
             order_data_str = os.getenv('ORDER_DATA', '')
+            order_id_env = os.getenv('ORDER_ID', '')
             
-            if not order_id or not order_data_str:
+            if not order_data_str:
                 self.logger.info("📭 Nenhum pedido recebido via webhook. Finalizando execução.")
                 return
             
-            # Parse do JSON do pedido
+            # Parsear dados do pedido recebido via webhook
             try:
                 order_to_process = json.loads(order_data_str)
-                self.logger.info(f"📥 Pedido recebido via webhook: {order_id}")
+                order_id = order_to_process.get('id', order_id_env) or 'unknown'
+                self.logger.info(f"🎯 Pedido recebido via webhook: {order_id}")
             except json.JSONDecodeError as e:
-                self.logger.error(f"❌ Erro ao parsear ORDER_DATA do webhook: {str(e)}")
+                self.logger.error(f"❌ Erro ao parsear ORDER_DATA: {str(e)}")
                 return
             
             # ===========================================
             # 2. PROCESSAR APENAS ESTE PEDIDO
             # ===========================================
+            self.logger.info(f"⚙️ Processando pedido {order_id} recebido via webhook...")
+            
             try:
-                # Processa APENAS o pedido recebido via webhook
+                # Processa APENAS este pedido recebido via webhook
                 success = self.process_single_order(order_to_process)
                 
                 if success:
@@ -535,7 +537,7 @@ class AntiLagBot:
                 self.logger.error(f"❌ Erro ao processar pedido {order_id}: {str(e)}")
             
             # ===========================================
-            # SEMPRE: FECHAR TUDO após processar QUALQUER pedido
+            # SEMPRE: FECHAR TUDO após processar
             # ===========================================
             finally:
                 # GARANTIR que navegador SEMPRE é fechado após processar
@@ -548,7 +550,7 @@ class AntiLagBot:
                 except Exception as e:
                     self.logger.warning(f"⚠️ Erro ao fechar navegador: {str(e)}")
                 
-                # SEMPRE TERMINAR após processar qualquer pedido
+                # SEMPRE TERMINAR após processar
                 self.logger.info("✅ Execução finalizada completamente. Aguardando próximo webhook.")
                 return  # Termina SEMPRE
         
