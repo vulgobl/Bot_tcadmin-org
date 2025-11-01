@@ -649,6 +649,11 @@ class TCAdminBot:
                 self.logger.warning("⚠️ RESEND_API_KEY não configurada, pulando envio de email")
                 return False
             
+            # Aguarda 5 minutos antes de enviar o email
+            self.logger.info("⏳ Aguardando 5 minutos antes de enviar o email...")
+            time.sleep(300)  # 5 minutos = 300 segundos
+            self.logger.info("✅ Aguardamento concluído, enviando email...")
+            
             # Busca dados do perfil para email e nome
             profile_data = order_data.get('profile', {})
             self.logger.info(f"📧 Profile data: {profile_data}")
