@@ -492,13 +492,15 @@ class AntiLagBot:
     def run_anti_lag_system(self):
         """
         Executa o sistema anti-lag principal
-        Esta é a função principal que roda continuamente
+        IMPORTANTE: Processa apenas 1 pedido por execução e termina completamente
         """
         self.logger.info("🚀 Iniciando Sistema Anti-Lag TCAdmin")
         self.logger.info("🛡️ Proteção contra sobrecarga ativada")
         self.logger.info("⏰ Intervalos inteligentes configurados")
+        self.logger.info("📌 MODO: Processa 1 pedido e termina completamente")
         
-        while True:
+        # Não usa loop infinito - processa 1 pedido e termina
+        try:
             try:
                 # ===========================================
                 # 1. VERIFICAÇÃO DE PROTEÇÃO CONTRA SOBRECARGA
@@ -524,69 +526,98 @@ class AntiLagBot:
                 has_orders = len(orders) > 0
                 self.update_state(has_orders)
                 
-                # ===========================================
-                # 4. PROCESSAMENTO DE PEDIDOS
-                # ===========================================
-                # Processa apenas o PRIMEIRO pedido encontrado
-                # Após processar, fecha tudo e sai (próximo será processado via fila)
-                if orders:
-                    # Pega apenas o primeiro pedido (mais antigo)
-                    first_order = orders[0]
-                    self.logger.info(f"🎯 {len(orders)} pedido(s) encontrado(s)! Processando apenas o primeiro: {first_order.get('id', 'unknown')}")
+            # ===========================================
+            # 1. VERIFICAÇÃO DE PROTEÇÃO CONTRA SOBRECARGA
+            # ===========================================
+            # Verifica se pode fazer requisição (limite: 100/hora)
+            if not self.can_make_request():
+                self.state = "overload"
+                self.logger.warning("⚠️ Limite de requisições atingido! Finalizando execução.")
+                return
+            
+            # ===========================================
+            # 2. BUSCA PEDIDOS PAGOS NO SUPABASE
+            # ===========================================
+            # Busca pedidos com status 'paid' automaticamente
+            orders = self.get_paid_orders_from_supabase()
+            self.record_request()  # Registra requisição feita
+            
+            # ===========================================
+            # 3. ATUALIZA ESTADO DO SISTEMA
+            # ===========================================
+            # Atualiza estado baseado na presença de pedidos
+            has_orders = len(orders) > 0
+            self.update_state(has_orders)
+            
+            # ===========================================
+            # 4. PROCESSAMENTO DE PEDIDOS
+            # ===========================================
+            # SEMPRE processa apenas 1 pedido e termina completamente
+            # Não importa qual pedido (primeiro, segundo, qualquer um)
+            if orders:
+                # Pega apenas o primeiro pedido encontrado
+                order_to_process = orders[0]
+                order_id = order_to_process.get('id', 'unknown')
+                self.logger.info(f"🎯 {len(orders)} pedido(s) encontrado(s)! Processando pedido: {order_id}")
+                
+                try:
+                    # Processa APENAS este pedido
+                    success = self.process_single_order(order_to_process)
                     
+                    if success:
+                        self.logger.info(f"✅ Pedido {order_id} processado com sucesso!")
+                    else:
+                        self.logger.error(f"❌ Falha ao processar pedido {order_id}")
+                    
+                except Exception as e:
+                    self.logger.error(f"❌ Erro ao processar pedido {order_id}: {str(e)}")
+                
+                # ===========================================
+                # SEMPRE: FECHAR TUDO após processar QUALQUER pedido
+                # ===========================================
+                finally:
+                    # GARANTIR que navegador SEMPRE é fechado após processar
                     try:
-                        # Processa APENAS este pedido
-                        success = self.process_single_order(first_order)
-                        
-                        if success:
-                            self.logger.info("✅ Pedido processado com sucesso!")
-                        else:
-                            self.logger.error("❌ Falha ao processar pedido")
-                        
-                        # GARANTIR que navegador foi fechado após processamento
-                        try:
-                            if self.bot_instance and self.bot_instance.driver:
-                                self.logger.info("🔄 Fechando navegador após processamento do pedido...")
-                                self.bot_instance.close_browser()
-                                self.bot_instance = None
-                                self.logger.info("✅ Navegador fechado completamente")
-                        except Exception as e:
-                            self.logger.warning(f"⚠️ Erro ao fechar navegador: {str(e)}")
-                        
-                        # TERMINAR COMPLETAMENTE após processar um pedido
-                        # O próximo pedido será processado quando o webhook chamar novamente via fila
-                        self.logger.info("✅ Processamento concluído. Finalizando execução completamente.")
-                        return  # Sai da função completamente, não continua o loop
-                        
+                        if self.bot_instance and self.bot_instance.driver:
+                            self.logger.info("🔄 Fechando navegador após processamento...")
+                            self.bot_instance.close_browser()
+                            self.bot_instance = None
+                            self.logger.info("✅ Navegador fechado completamente")
                     except Exception as e:
-                        self.logger.error(f"❌ Erro ao processar pedido {first_order.get('id', 'unknown')}: {str(e)}")
-                        
-                        # Fechar navegador mesmo em caso de erro
-                        try:
-                            if self.bot_instance and self.bot_instance.driver:
-                                self.logger.info("🔄 Fechando navegador após erro...")
-                                self.bot_instance.close_browser()
-                                self.bot_instance = None
-                        except:
-                            pass
-                        
-                        # TERMINAR mesmo em caso de erro
-                        self.logger.info("❌ Finalizando execução após erro.")
-                        return  # Sai da função completamente
-                
-                # Se não encontrou pedidos, também termina (não fica em loop infinito procurando)
-                else:
-                    self.logger.info("📭 Nenhum pedido encontrado. Finalizando execução.")
-                    return  # Termina completamente quando não há pedidos
-                
-            except KeyboardInterrupt:
-                # Usuário pressionou Ctrl+C
-                self.logger.info("🛑 Sistema interrompido pelo usuário")
-                break
-            except Exception as e:
-                # Erro inesperado - pausa por 4 minutos
-                self.logger.error(f"❌ Erro no loop principal: {str(e)}")
-                time.sleep(240)  # 4 minutos de pausa em caso de erro
+                        self.logger.warning(f"⚠️ Erro ao fechar navegador: {str(e)}")
+                    
+                    # SEMPRE TERMINAR após processar qualquer pedido
+                    self.logger.info("✅ Execução finalizada completamente. Próximo pedido será processado via fila.")
+                    return  # Termina SEMPRE, não continua procurando
+            
+            # Se não encontrou pedidos, também termina
+            else:
+                self.logger.info("📭 Nenhum pedido encontrado. Finalizando execução.")
+                return
+        
+        except KeyboardInterrupt:
+            # Usuário pressionou Ctrl+C
+            self.logger.info("🛑 Sistema interrompido pelo usuário")
+            # Garantir fechamento antes de sair
+            try:
+                if self.bot_instance and self.bot_instance.driver:
+                    self.bot_instance.close_browser()
+                    self.bot_instance = None
+            except:
+                pass
+            return
+        
+        except Exception as e:
+            # Erro inesperado - sempre fechar e terminar
+            self.logger.error(f"❌ Erro no processamento: {str(e)}")
+            try:
+                if self.bot_instance and self.bot_instance.driver:
+                    self.bot_instance.close_browser()
+                    self.bot_instance = None
+            except:
+                pass
+            self.logger.info("❌ Finalizando execução após erro.")
+            return
     
     def log_status(self):
         """Log de status do sistema"""
