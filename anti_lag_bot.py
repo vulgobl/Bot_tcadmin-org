@@ -492,85 +492,71 @@ class AntiLagBot:
     def run_anti_lag_system(self):
         """
         Executa o sistema anti-lag principal
-        IMPORTANTE: Processa apenas 1 pedido por execução e termina completamente
+        IMPORTANTE: Funciona APENAS via webhook, não busca pedidos automaticamente
+        Processa apenas o pedido recebido via ORDER_DATA do webhook
         """
         self.logger.info("🚀 Iniciando Sistema Anti-Lag TCAdmin")
-        self.logger.info("🛡️ Proteção contra sobrecarga ativada")
-        self.logger.info("⏰ Intervalos inteligentes configurados")
-        self.logger.info("📌 MODO: Processa 1 pedido e termina completamente")
+        self.logger.info("📌 MODO: Processa apenas pedido do webhook (ORDER_DATA)")
+        self.logger.info("⚠️ NÃO busca pedidos automaticamente - apenas processa o recebido via webhook")
         
-        # Não usa loop infinito - processa 1 pedido e termina
         try:
             # ===========================================
-            # 1. VERIFICAÇÃO DE PROTEÇÃO CONTRA SOBRECARGA
+            # 1. VERIFICAR SE HÁ PEDIDO DO WEBHOOK
             # ===========================================
-            # Verifica se pode fazer requisição (limite: 100/hora)
-            if not self.can_make_request():
-                self.state = "overload"
-                self.logger.warning("⚠️ Limite de requisições atingido! Finalizando execução.")
+            # Verifica se ORDER_DATA foi passado pelo webhook
+            order_data_str = os.getenv('ORDER_DATA', '')
+            order_id = os.getenv('ORDER_ID', '')
+            
+            if not order_data_str:
+                self.logger.warning("⚠️ ORDER_DATA não fornecido. Bot deve ser chamado via webhook.")
+                self.logger.info("📭 Finalizando execução - nenhum pedido para processar.")
                 import sys
-                sys.exit(0)  # Termina o processo Python completamente
+                sys.exit(0)  # Termina se não recebeu pedido do webhook
+            
+            # Parsear dados do pedido recebido do webhook
+            try:
+                order_data = json.loads(order_data_str)
+                self.logger.info(f"📦 Pedido recebido do webhook: {order_data.get('id', order_id)}")
+            except json.JSONDecodeError as e:
+                self.logger.error(f"❌ Erro ao parsear ORDER_DATA: {str(e)}")
+                import sys
+                sys.exit(1)
             
             # ===========================================
-            # 2. BUSCA PEDIDOS PAGOS NO SUPABASE
+            # 2. PROCESSAR PEDIDO DO WEBHOOK
             # ===========================================
-            # Busca pedidos com status 'paid' automaticamente
-            orders = self.get_paid_orders_from_supabase()
-            self.record_request()  # Registra requisição feita
+            order_to_process = order_data
+            order_id = order_to_process.get('id', order_id)
+            self.logger.info(f"🎯 Processando pedido do webhook: {order_id}")
             
-            # ===========================================
-            # 3. ATUALIZA ESTADO DO SISTEMA
-            # ===========================================
-            # Atualiza estado baseado na presença de pedidos
-            has_orders = len(orders) > 0
-            self.update_state(has_orders)
-            
-            # ===========================================
-            # 4. PROCESSAMENTO DE PEDIDOS
-            # ===========================================
-            # SEMPRE processa apenas 1 pedido e termina completamente
-            # Não importa qual pedido (primeiro, segundo, qualquer um)
-            if orders:
-                # Pega apenas o primeiro pedido encontrado
-                order_to_process = orders[0]
-                order_id = order_to_process.get('id', 'unknown')
-                self.logger.info(f"🎯 {len(orders)} pedido(s) encontrado(s)! Processando pedido: {order_id}")
+            try:
+                # Processa APENAS este pedido recebido do webhook
+                success = self.process_single_order(order_to_process)
                 
+                if success:
+                    self.logger.info(f"✅ Pedido {order_id} processado com sucesso!")
+                else:
+                    self.logger.error(f"❌ Falha ao processar pedido {order_id}")
+                
+            except Exception as e:
+                self.logger.error(f"❌ Erro ao processar pedido {order_id}: {str(e)}")
+            
+            # ===========================================
+            # 3. SEMPRE: FECHAR TUDO após processar
+            # ===========================================
+            finally:
+                # GARANTIR que navegador SEMPRE é fechado após processar
                 try:
-                    # Processa APENAS este pedido
-                    success = self.process_single_order(order_to_process)
-                    
-                    if success:
-                        self.logger.info(f"✅ Pedido {order_id} processado com sucesso!")
-                    else:
-                        self.logger.error(f"❌ Falha ao processar pedido {order_id}")
-                    
+                    if self.bot_instance and self.bot_instance.driver:
+                        self.logger.info("🔄 Fechando navegador após processamento...")
+                        self.bot_instance.close_browser()
+                        self.bot_instance = None
+                        self.logger.info("✅ Navegador fechado completamente")
                 except Exception as e:
-                    self.logger.error(f"❌ Erro ao processar pedido {order_id}: {str(e)}")
+                    self.logger.warning(f"⚠️ Erro ao fechar navegador: {str(e)}")
                 
-                # ===========================================
-                # SEMPRE: FECHAR TUDO após processar QUALQUER pedido
-                # ===========================================
-                finally:
-                    # GARANTIR que navegador SEMPRE é fechado após processar
-                    try:
-                        if self.bot_instance and self.bot_instance.driver:
-                            self.logger.info("🔄 Fechando navegador após processamento...")
-                            self.bot_instance.close_browser()
-                            self.bot_instance = None
-                            self.logger.info("✅ Navegador fechado completamente")
-                    except Exception as e:
-                        self.logger.warning(f"⚠️ Erro ao fechar navegador: {str(e)}")
-                    
-                    # SEMPRE TERMINAR após processar qualquer pedido
-                    self.logger.info("✅ Execução finalizada completamente. Próximo pedido será processado via fila.")
-                    # Força término completo do processo
-                    import sys
-                    sys.exit(0)  # Termina o processo Python completamente
-            
-            # Se não encontrou pedidos, também termina
-            else:
-                self.logger.info("📭 Nenhum pedido encontrado. Finalizando execução.")
+                # SEMPRE TERMINAR após processar
+                self.logger.info("✅ Execução finalizada completamente. Próximo pedido será processado via fila.")
                 import sys
                 sys.exit(0)  # Termina o processo Python completamente
         
