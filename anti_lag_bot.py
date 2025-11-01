@@ -553,10 +553,10 @@ class AntiLagBot:
                         except Exception as e:
                             self.logger.warning(f"⚠️ Erro ao fechar navegador: {str(e)}")
                         
-                        # SAIR do loop após processar um pedido
-                        # O próximo pedido será processado quando o webhook chamar novamente
-                        self.logger.info("✅ Processamento concluído. Saindo para processar próximo pedido via fila.")
-                        break
+                        # TERMINAR COMPLETAMENTE após processar um pedido
+                        # O próximo pedido será processado quando o webhook chamar novamente via fila
+                        self.logger.info("✅ Processamento concluído. Finalizando execução completamente.")
+                        return  # Sai da função completamente, não continua o loop
                         
                     except Exception as e:
                         self.logger.error(f"❌ Erro ao processar pedido {first_order.get('id', 'unknown')}: {str(e)}")
@@ -570,26 +570,14 @@ class AntiLagBot:
                         except:
                             pass
                         
-                        # Sair mesmo em caso de erro
-                        break
+                        # TERMINAR mesmo em caso de erro
+                        self.logger.info("❌ Finalizando execução após erro.")
+                        return  # Sai da função completamente
                 
-                # ===========================================
-                # 5. CALCULA PRÓXIMO INTERVALO
-                # ===========================================
-                # Calcula quanto tempo aguardar até próxima verificação
-                interval = self.get_next_interval()
-                
-                # ===========================================
-                # 6. LOG DE STATUS
-                # ===========================================
-                # Mostra status atual do sistema
-                self.log_status()
-                
-                # ===========================================
-                # 7. AGUARDA PRÓXIMO CICLO
-                # ===========================================
-                # Aguarda o intervalo calculado antes de verificar novamente
-                time.sleep(interval)
+                # Se não encontrou pedidos, também termina (não fica em loop infinito procurando)
+                else:
+                    self.logger.info("📭 Nenhum pedido encontrado. Finalizando execução.")
+                    return  # Termina completamente quando não há pedidos
                 
             except KeyboardInterrupt:
                 # Usuário pressionou Ctrl+C
