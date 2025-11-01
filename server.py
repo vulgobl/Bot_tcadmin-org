@@ -48,7 +48,7 @@ def run_anti_lag(x_webhook_token: str = Header(default="")):
     log_fp.flush()
 
     env = os.environ.copy()
-    cmd = ["timeout", "300s", "python3", "anti_lag_bot.py"]  # 5 minutos
+    cmd = ["timeout", "600s", "python3", "anti_lag_bot.py"]  # 10 minutos (5 min delay email + criação usuário/serviço)
     current_proc = subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
